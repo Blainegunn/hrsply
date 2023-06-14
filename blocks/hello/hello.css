@@ -1,0 +1,7 @@
+.hello {
+  padding: var(--spacing-xxl);
+  background: var(--color-gray-800);
+  color: #FFF;
+  border-bottom: 40px solid #ff1693;
+  border-top: 10px solid #64ff16;
+}
