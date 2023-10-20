@@ -61,11 +61,12 @@ const miloLibs = setLibs(LIBS);
   const { loadArea, setConfig } = await import(`${miloLibs}/utils/utils.js`);
 
   setConfig({ ...CONFIG, miloLibs });
-  await loadArea();
 
   document.addEventListener('milo:deferred', ()=> {
     loadLazy()
   });  
+
+  await loadArea();
 }());
 
 async function loadLazy() {
