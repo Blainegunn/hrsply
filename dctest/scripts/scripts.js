@@ -20,7 +20,7 @@ const LIBS = 'https://milo.adobe.com/libs';
 
 // Add any config options.
 const CONFIG = {
-  codeRoot: 'dctest',
+  codeRoot: '/dctest',
   // contentRoot: '',
   // imsClientId: 'college',
   // geoRouting: 'off',
