@@ -67,8 +67,7 @@ async function addReviewToEnvSelector(shadowRoot) {
         window.location.href = `https://${env.ref}--${env.repo}--${env.owner}.hlx.page${window.location.pathname}`;
       }
       if (text === 'Review') {
-        window.location.href = `https://${reviews[0].reviewId}--${env.ref}--${env.repo}--${env.owner}.hlx.reviews${window.location.pathname}`;
-      }
+        window.location.href = `https://${reviews[0].reviewId}--${env.ref}--${env.repo}--${env.owner}.aem.reviews${window.location.pathname}`;      }
       if (text === 'Live') {
         window.location.href = `https://${env.ref}--${env.repo}--${env.owner}.hlx.live${window.location.pathname}`;
       }
@@ -157,13 +156,15 @@ async function previewMode(plugins, sk) {
         const search = getPageParams();
         await addPageToReview(window.location.pathname + search, openReviews[0].reviewId);
       }
-      window.location.href = `https://default--${env.ref}--${env.repo}--${env.owner}.hlx.reviews${window.location.pathname}`;
+      window.location.href = `https://default--${env.ref}--${env.repo}--${env.owner}.aem.reviews${window.location.pathname}`;
     });
   } catch (e) {
     button.setAttribute('disabled', '');
     button.title = 'Failed to Connect to Review Service';
-    button.textContent = '(Network Error)'
+    button.textContent = '(Network Error)';
   }
+
+  addReviewMgr(plugins, sk);
 }
 
 async function openManifest(sk) {
@@ -182,7 +183,7 @@ async function openManifest(sk) {
   dialog.className = 'hlx-dialog';
   const edit = review.status === 'open' ? `<div class="hlx-edit-manifest hlx-edit-hide"><button id="hlx-edit-manifest">Edit Pages in Change Log</button><textarea wrap="off" rows="10">${review.pages.map((path) => `https://${env.ref}--${env.repo}--${env.owner}.hlx.page${path}`).join('\n')}</textarea><button id="hlx-update-manifest">Update Change Log</button></div>` : '';
   const buttons = review.status === 'open' ? '<button id="hlx-submit">Submit for Review</button>' : `<button${disabled} id="hlx-approve">Approve and Publish</button> <button${disabled} id="hlx-reject">Reject Review</button>`;
-  const pages = review.pages.map((path) => `<p class="hlx-row"><a href="${path}">https://${env.review}--${env.ref}--${env.repo}--${env.owner}.hlx.reviews${path}</a></p>`);
+  const pages = review.pages.map((path) => `<p class="hlx-row"><a href="${path}">https://${env.review}--${env.ref}--${env.repo}--${env.owner}.aem.reviews${path}</a></p>`);
   dialog.innerHTML = `
     <form method="dialog">
       <button class="hlx-close-button">X</button>
@@ -269,6 +270,8 @@ async function decorateSidekick(sk) {
 
   sk.shadowRoot.append(link);
 
+  console.log(state);
+
   if (state === 'page') previewMode(plugins, sk);
   if (state === 'reviews') reviewMode(features, sk);
   addReviewToEnvSelector(sk.shadowRoot);
@@ -299,6 +302,28 @@ function waitForSidekickPlugins(sk) {
     }
   }
 
+  function openSidekick(callback) {
+    const env = getReviewEnv();
+
+    const SIDEKICK_EXTENSION_ID = 'ccfggkjabjahcjoljmgmklhpaccedipo';
+    if (window.chrome && window.chrome.runtime) {
+      const payload = { owner: env.owner, repo: env.repo, action: 'loadSidekick' };
+      window.chrome.runtime.sendMessage(SIDEKICK_EXTENSION_ID, payload, callback);
+    } else {
+      console.error('No chrome.runtime, cannot send message to the Sidekick');
+    }
+  }
+
+  if (window.location.hostname.endsWith('.reviews')) {
+    // Sidekick doesn't know how to open on .reviews
+    // so we need to open it manually
+    openSidekick((opened) => {
+      if (!opened) {
+        console.warn('Cannot open sidekick on this page');
+      }
+    });
+  }
+
   const sk = document.querySelector('helix-sidekick');
   if (sk) {
     waitForSidekickPlugins(sk);
@@ -309,3 +334,113 @@ function waitForSidekickPlugins(sk) {
     }, { once: true });
   }
 })();
+
+function addReviewMgr(plugins, sk) {
+  const toolsDropdown = plugins.querySelector('.plugin.tools .dropdown-container');
+  const divReviewMgr = document.createElement('div');
+  divReviewMgr.className = 'review-manager plugin';
+  divReviewMgr.innerHTML = '<button title="Review Manager">Review Manager</button>';
+  toolsDropdown.append(divReviewMgr);
+  divReviewMgr.addEventListener('click', () => {
+    openReviewManager(sk);
+  });
+}
+
+async function openReviewManager(sk) {
+  console.log('STATE', SidekickState);
+  const { status } = SidekickState;
+  const env = getReviewEnv();
+  const reviews = await getReviews();
+
+  console.log(reviews);
+  console.log(env);
+
+  env.review = reviews[0].reviewId;
+  const review = reviews.find((r) => r.reviewId === env.review);
+
+  const disabled = (status && status.live && status.live.permissions
+    && status.live.permissions.includes('write')) ? '' : ' disabled';
+
+  const dialog = document.createElement('dialog');
+  dialog.className = 'hlx-dialog';
+
+  const reviewOptions = reviews.map(r => `<option value="${r.reviewId}">${r.reviewId}</option>`).join();
+  const openReviews = `<select id="hlx-list-reviews">${reviewOptions}</select>`;
+
+  dialog.innerHTML = `
+    <form method="dialog">
+      <button class="hlx-close-button">X</button>
+    </form>
+    <h3>Select Review</h3>
+    ${openReviews}
+  `;
+
+  function onChangeReview(reviewId) {
+    let divReview = document.createElement('#hlx-review');
+    if (divReview) divReview.remove();
+
+    const review = reviews.find((r) => r.reviewId === reviewId); 
+
+    const edit = review.status === 'open' ? `<div class="hlx-edit-manifest hlx-edit-hide"><button id="hlx-edit-manifest">Edit Pages in Change Log</button><textarea wrap="off" rows="10">${review.pages.map((path) => `https://${env.ref}--${env.repo}--${env.owner}.hlx.page${path}`).join('\n')}</textarea><button id="hlx-update-manifest">Update Change Log</button></div>` : '';
+    const buttons = review.status === 'open' ? '<button id="hlx-submit">Submit for Review</button>' : `<button${disabled} id="hlx-approve">Approve and Publish</button> <button${disabled} id="hlx-reject">Reject Review</button>`;
+    const pages = review.pages.map((path) => `<p class="hlx-row"><a href="${path}">https://${env.review}--${env.ref}--${env.repo}--${env.owner}.hlx.reviews${path}</a></p>`);
+  
+    divReview = document.createElement('div', {id: 'hlx-review'});
+    divReview.innerHTML = `
+      <h3>Change Log for Site in ${review.reviewId} Review (${review.status === 'open' ? 'Preparing For Review' : 'Submitted For Review'})</h3>
+      <p>${buttons}</p>
+      ${pages.join('')}
+      ${edit}
+    `;
+
+    dialog.append(divReview);
+
+    const editManifest = dialog.querySelector('#hlx-edit-manifest');
+    if (editManifest) {
+      editManifest.addEventListener('click', () => {
+        editManifest.parentElement.classList.remove('hlx-edit-hide');
+        editManifest.parentElement.classList.add('hlx-edit-show');
+      });
+    }
+
+    const update = dialog.querySelector('#hlx-update-manifest');
+    if (update) {
+      update.addEventListener('click', () => {
+        const ta = dialog.querySelector('textarea');
+        const taPages = ta.value.split('\n').filter((line) => !!line).map((line) => {
+          console.log(`line:${line}`);
+          const url = new URL(line, window.location.href);
+          return (url.pathname + url.search);
+        });
+        updateReview(taPages, review.reviewId, env);
+        dialog.close();
+      });
+    }
+  
+    const verbs = [{ id: 'reject', f: rejectReview }, { id: 'approve', f: approveReview }, { id: 'submit', f: submitForReview }];
+  
+    verbs.forEach((verb) => {
+      const button = dialog.querySelector(`#hlx-${verb.id}`);
+      if (button) {
+        button.addEventListener('click', async () => {
+          await verb.f(review.reviewId);
+          dialog.close();
+          if (verb.id === 'approve') {
+            window.location.href = `https://${env.ref}--${env.repo}--${env.owner}.hlx.live${window.location.pathname}`;
+          } else {
+            window.location.reload();
+          }
+        });
+      }
+    });
+  } 
+
+  dialog.querySelector('#hlx-list-reviews').addEventListener('change', (e) => {
+    onChangeReview(e.target.textContent)
+  });
+
+  sk.shadowRoot.append(dialog);
+  dialog.showModal();
+
+  onChangeReview(reviews[0].reviewId);
+}

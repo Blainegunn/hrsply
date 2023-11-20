@@ -205,8 +205,7 @@
     display: none;
   }
   
-  
-  .hlx-dialog button {
+  .hlx-dialog button,select {
     background-color: transparent;
     border: var(--hlx-sk-button-border);
     border-radius: var(--hlx-sk-button-border-radius);
