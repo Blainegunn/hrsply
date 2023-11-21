@@ -19,7 +19,7 @@ async function getReviewStatus() {
 async function getPageReview() {
   const reviews = await getReviews();
   console.log(reviews);
-  const review = reviews.find((r) => r.pages.find((p) => p.split('?')[0] === window.location.pathname));
+  const review = reviews.find((r) => r.pages?.find((p) => p.split('?')[0] === window.location.pathname));
   return review;
 }
 
