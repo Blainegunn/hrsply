@@ -67,13 +67,13 @@ async function addReviewToEnvSelector(shadowRoot) {
         window.location.href = `https://${env.ref}--${env.repo}--${env.owner}.hlx.page${window.location.pathname}`;
       }
       if (text === 'Review') {
-        window.location.href = `https://${reviews[0].reviewId}--${env.ref}--${env.repo}--${env.owner}.aem.reviews${window.location.pathname}`;      }
+        window.location.href = `https://${reviews[0].reviewId}--${env.ref}--${env.repo}--${env.owner}.aem.reviews${window.location.pathname}`;
+      }
       if (text === 'Live') {
         window.location.href = `https://${env.ref}--${env.repo}--${env.owner}.hlx.live${window.location.pathname}`;
       }
       if (text === 'Production') {
         // todo for live: check if sidekick config contains host
-        // window.location.href = `https://www.penbrayacomingsoon.com${window.location.pathname}`;
       }
     });
     return (button);
@@ -163,8 +163,6 @@ async function previewMode(plugins, sk) {
     button.title = 'Failed to Connect to Review Service';
     button.textContent = '(Network Error)';
   }
-
-  addReviewMgr(plugins, sk);
 }
 
 async function openManifest(sk) {
