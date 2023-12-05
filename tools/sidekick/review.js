@@ -163,6 +163,8 @@ async function previewMode(plugins, sk) {
     button.title = 'Failed to Connect to Review Service';
     button.textContent = '(Network Error)';
   }
+
+  addReviewMgr(plugins, sk);
 }
 
 async function openManifest(sk) {
